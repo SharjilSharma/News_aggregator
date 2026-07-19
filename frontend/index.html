@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroPulse — AI Intelligence Aggregator</title>
+  <meta name="description" content="Multi-domain AI intelligence platform. Fetches news, research, releases and blogs across AI, Cybersecurity, Finance, Biotech and Web3 — summarized by Gemini AI." />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#07080d" />
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+
+  <style>
+    /* ── Design Tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg:          #07080d;
+      --bg2:         #0d0f18;
+      --bg3:         #141720;
+      --surface:     rgba(255,255,255,0.04);
+      --surface-h:   rgba(255,255,255,0.08);
+      --border:      rgba(255,255,255,0.07);
+      --border-h:    rgba(255,255,255,0.16);
+      --text:        #e8eaf0;
+      --text-muted:  #6b7280;
+      --text-dim:    #9ca3af;
+      --radius:      16px;
+      --radius-sm:   10px;
+      --font:        'Inter', system-ui, sans-serif;
+      --mono:        'JetBrains Mono', monospace;
+      --shadow:      0 4px 32px rgba(0,0,0,0.5);
+      --shadow-card: 0 2px 20px rgba(0,0,0,0.35);
+      --transition:  0.22s cubic-bezier(0.4,0,0.2,1);
+
+      /* Domain colors */
+      --ai:       #7c3aed;
+      --cybersec: #ef4444;
+      --finance:  #10b981;
+      --biotech:  #06b6d4;
+      --web3:     #f59e0b;
+
+      /* Active domain (set by JS) */
+      --domain-color: #7c3aed;
+    }
+
+    [data-theme="light"] {
+      --bg:         #f0f2f8;
+      --bg2:        #e8eaf2;
+      --bg3:        #dde1ed;
+      --surface:    rgba(255,255,255,0.75);
+      --surface-h:  rgba(255,255,255,0.95);
+      --border:     rgba(0,0,0,0.08);
+      --border-h:   rgba(0,0,0,0.15);
+      --text:       #111827;
+      --text-muted: #6b7280;
+      --text-dim:   #4b5563;
+      --shadow:     0 4px 32px rgba(0,0,0,0.1);
+      --shadow-card:0 2px 20px rgba(0,0,0,0.08);
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      transition: background var(--transition), color var(--transition);
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; font-family: var(--font); border: none; background: none; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+
+    /* ── Header ────────────────────────────────────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(7,8,13,0.88);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    [data-theme="light"] .header { background: rgba(240,242,248,0.9); }
+    .header-inner {
+      max-width: 1440px; margin: 0 auto;
+      display: flex; align-items: center; gap: 14px; height: 64px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .logo-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--domain-color) 0%, #4f46e5 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; transition: background var(--transition);
+    }
+    .logo-text { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+    .logo-v { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 2px; }
+
+    .header-search {
+      flex: 1; max-width: 380px; margin-left: auto;
+      position: relative;
+    }
+    .search-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 14px; pointer-events: none;
+    }
+    #searchInput {
+      width: 100%; padding: 9px 14px 9px 36px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text); font-size: 14px; font-family: var(--font);
+      outline: none; transition: all var(--transition);
+    }
+    #searchInput:focus { border-color: var(--domain-color); background: var(--surface-h); }
+    #searchInput::placeholder { color: var(--text-muted); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; margin-left: 12px; }
+    .btn-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text-dim); font-size: 16px;
+      transition: all var(--transition);
+    }
+    .btn-icon:hover { background: var(--surface-h); border-color: var(--border-h); color: var(--text); }
+
+    /* ── Hero Section ──────────────────────────────────────────────────────── */
+    .hero {
+      padding: 48px 24px 36px;
+      max-width: 1440px; margin: 0 auto;
+    }
+    .hero-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 900; letter-spacing: -0.035em;
+      line-height: 1.12; margin-bottom: 10px;
+    }
+    .hero-title .grad {
+      background: linear-gradient(120deg, var(--domain-color) 0%, #4f46e5 50%, var(--domain-color) 100%);
+      background-size: 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+
+    .hero-sub {
+      color: var(--text-muted); font-size: 16px; max-width: 520px; margin-bottom: 32px;
+    }
+
+    /* ── Domain Cards ──────────────────────────────────────────────────────── */
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px; margin-bottom: 36px;
+    }
+    .domain-card {
+      padding: 18px 20px; border-radius: var(--radius);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .domain-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--card-color, #7c3aed);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .domain-card:hover { transform: translateY(-3px); border-color: var(--card-color, #7c3aed); }
+    .domain-card:hover::before { opacity: 0.06; }
+    .domain-card.active {
+      border-color: var(--card-color, #7c3aed);
+      background: color-mix(in srgb, var(--card-color, #7c3aed) 12%, transparent);
+      transform: translateY(-2px);
+      box-shadow: 0 0 24px color-mix(in srgb, var(--card-color, #7c3aed) 25%, transparent);
+    }
+    .domain-card.fetching {
+      animation: pulse-border 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--card-color, #7c3aed) 40%, transparent); }
+      50%       { box-shadow: 0 0 0 6px color-mix(in srgb, var(--card-color, #7c3aed) 0%, transparent); }
+    }
+    .domain-icon { font-size: 26px; margin-bottom: 10px; display: block; }
+    .domain-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .domain-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+    .domain-meta { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .domain-badge {
+      font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px;
+      background: rgba(255,255,255,0.08); color: var(--text-muted);
+    }
+    .domain-badge.count { background: color-mix(in srgb, var(--card-color, #7c3aed) 18%, transparent); color: var(--card-color, #7c3aed); }
+
+    /* ── Fetch Status Bar ──────────────────────────────────────────────────── */
+    .fetch-bar {
+      margin-bottom: 24px; display: none;
+    }
+    .fetch-bar.visible { display: block; }
+    .fetch-progress-track {
+      height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 10px;
+    }
+    .fetch-progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--domain-color), #4f46e5);
+      transition: width 0.4s ease;
+      animation: progress-flow 1.5s ease-in-out infinite;
+    }
+    @keyframes progress-flow {
+      0%   { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+    .fetch-steps {
+      display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+    }
+    .fetch-step {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-muted);
+      transition: color var(--transition);
+    }
+    .fetch-step.active { color: var(--text); }
+    .fetch-step.done { color: #10b981; }
+    .step-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border); transition: background var(--transition);
+    }
+    .fetch-step.active .step-dot { background: var(--domain-color); animation: dot-pulse 0.8s ease infinite; }
+    .fetch-step.done .step-dot { background: #10b981; }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.6; transform: scale(1.4); }
+    }
+
+    /* ── Stats Strip ───────────────────────────────────────────────────────── */
+    .stats-strip {
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+      padding: 14px 0; margin-bottom: 24px;
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .stat-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .stat-num { font-weight: 700; font-size: 15px; font-family: var(--mono); color: var(--text); }
+    .stat-label { color: var(--text-muted); }
+    .stat-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: blink 2s ease infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── Toolbar ───────────────────────────────────────────────────────────── */
+    .toolbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .cat-pills { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .cat-pill {
+      padding: 6px 14px; border-radius: 99px; font-size: 12.5px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+      transition: all var(--transition);
+    }
+    .cat-pill:hover { border-color: var(--border-h); color: var(--text); background: var(--surface-h); }
+    .cat-pill.active { background: var(--domain-color); border-color: var(--domain-color); color: #fff; }
+
+    .sort-select {
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-size: 12px; font-family: var(--font);
+      cursor: pointer; outline: none;
+    }
+
+    /* ── Article Grid ──────────────────────────────────────────────────────── */
+    #articlesGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 18px;
+      min-height: 300px;
+    }
+
+    /* ── Article Card ──────────────────────────────────────────────────────── */
+    .article-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px; display: flex; flex-direction: column; gap: 12px;
+      transition: all 0.25s cubic-bezier(0.34,1.2,0.64,1);
+      position: relative; overflow: hidden;
+      animation: card-in 0.35s ease both;
+    }
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .article-card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--card-accent, var(--domain-color));
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .article-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-h);
+      box-shadow: var(--shadow-card);
+    }
+    .article-card:hover::after { opacity: 1; }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .card-meta { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .source-favicon {
+      width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+      object-fit: cover; background: var(--border);
+    }
+    .source-name { font-size: 11.5px; color: var(--text-muted); font-weight: 500; }
+    .pub-time { font-size: 11px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+    .cat-chip {
+      font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+      white-space: nowrap; flex-shrink: 0; letter-spacing: 0.02em;
+    }
+
+    .card-title {
+      font-size: 15px; font-weight: 700; line-height: 1.45;
+      color: var(--text); letter-spacing: -0.01em;
+    }
+    .card-title a:hover { color: var(--domain-color); }
+
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+      background: rgba(124,58,237,0.15); color: #a78bfa;
+      border: 1px solid rgba(124,58,237,0.2);
+      margin-bottom: 4px;
+    }
+
+    .card-summary { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+    .card-summary.fallback { font-style: italic; }
+
+    .keyword-row { display: flex; gap: 5px; flex-wrap: wrap; }
+    .kw-tag {
+      font-size: 10.5px; padding: 2px 8px; border-radius: 5px;
+      background: rgba(255,255,255,0.05); color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .card-footer { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .btn-read {
+      flex: 1; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+      background: var(--domain-color); color: #fff;
+      transition: all var(--transition); text-align: center;
+    }
+    .btn-read:hover { filter: brightness(1.15); transform: scale(1.01); }
+    .btn-linkedin {
+      padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border); color: #0077b5;
+      transition: all var(--transition); white-space: nowrap;
+    }
+    .btn-linkedin:hover { background: rgba(0,119,181,0.12); border-color: #0077b5; }
+    .btn-copy {
+      width: 34px; height: 34px; border-radius: 8px; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      transition: all var(--transition);
+    }
+    .btn-copy:hover { background: var(--surface-h); color: var(--text); }
+
+    /* ── Loading / Empty States ─────────────────────────────────────────────── */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 18px;
+    }
+    .skeleton-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      animation: skeleton-pulse 1.5s ease infinite;
+    }
+    @keyframes skeleton-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+    .skel-line { height: 12px; border-radius: 6px; background: var(--border); margin-bottom: 10px; }
+    .skel-line.short { width: 40%; }
+    .skel-line.medium { width: 70%; }
+
+    .empty-state {
+      grid-column: 1/-1; text-align: center; padding: 80px 24px;
+    }
+    .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .empty-sub { color: var(--text-muted); font-size: 14px; }
+
+    /* ── Pagination ─────────────────────────────────────────────────────────── */
+    .pagination {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin: 36px 0;
+    }
+    .page-btn {
+      padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      transition: all var(--transition);
+    }
+    .page-btn:hover:not(:disabled) { background: var(--surface-h); border-color: var(--border-h); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .page-info { font-size: 13px; color: var(--text-muted); }
+
+    /* ── LinkedIn Modal ─────────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; max-width: 600px; width: 100%;
+      max-height: 80vh; overflow-y: auto;
+      animation: modal-in 0.25s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+    #modalContent {
+      font-size: 13.5px; line-height: 1.75; white-space: pre-wrap;
+      background: var(--surface); padding: 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); margin-bottom: 16px; min-height: 80px;
+      color: var(--text);
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-primary {
+      padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      background: #0077b5; color: #fff; transition: all var(--transition);
+    }
+    .btn-primary:hover { filter: brightness(1.2); }
+    .btn-secondary {
+      padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      transition: all var(--transition);
+    }
+    .btn-secondary:hover { background: var(--surface-h); }
+
+    /* LinkedIn modal how-to steps */
+    .how-step {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 12px;
+      font-size: 12px; color: var(--text-dim); flex: 1; min-width: 140px;
+    }
+    .step-num {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--domain-color); color: #fff;
+      font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Toast ──────────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      padding: 12px 20px; border-radius: 10px;
+      background: var(--bg3); border: 1px solid var(--border);
+      font-size: 13px; font-weight: 600;
+      box-shadow: var(--shadow);
+      transform: translateY(20px); opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero { padding: 32px 16px 24px; }
+      .domain-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      #articlesGrid { grid-template-columns: 1fr; }
+      .skeleton-grid { grid-template-columns: 1fr; }
+      .header-search { max-width: 200px; }
+      .stats-strip { gap: 14px; }
+      .hero-title { font-size: 26px; }
+    }
+    @media (max-width: 480px) {
+      .domain-grid { grid-template-columns: 1fr 1fr; }
+      .header-inner { gap: 8px; }
+      .header-search { max-width: 160px; }
+    }
+
+    /* ── Auth Landing Page ─────────────────────────────────────────────────── */
+    #landingOverlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg); display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: opacity 0.5s;
+    }
+    .auth-box {
+      background: var(--bg2); padding: 40px; border-radius: var(--radius);
+      border: 1px solid var(--border); box-shadow: var(--shadow);
+      width: 100%; max-width: 400px; text-align: center;
+    }
+    .auth-box h2 { font-size: 28px; margin-bottom: 10px; }
+    .auth-box p { color: var(--text-muted); margin-bottom: 30px; }
+    .auth-input {
+      width: 100%; padding: 12px 16px; border-radius: var(--radius-sm);
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); margin-bottom: 16px;
+      transition: border-color var(--transition);
+    }
+    .auth-input:focus { outline: none; border-color: var(--domain-color); }
+    .auth-btn {
+      width: 100%; padding: 12px 16px; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--domain-color), #4f46e5);
+      color: #fff; font-weight: 600; font-size: 16px; margin-bottom: 16px;
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--domain-color) 40%, transparent);
+      transition: transform var(--transition);
+    }
+    .auth-btn:hover { transform: translateY(-2px); }
+    .auth-toggle { font-size: 14px; color: var(--text-muted); }
+    .auth-toggle span { color: var(--domain-color); cursor: pointer; font-weight: 600; }
+    .auth-error { color: #ef4444; font-size: 13px; margin-bottom: 16px; display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth Landing Overlay ──────────────────────────────────────────────── -->
+<div id="landingOverlay" style="display: none;">
+  <div class="auth-box">
+    <div class="logo-mark" style="font-size: 40px; margin-bottom: 20px;">⚡</div>
+    <h2 id="authTitle">Welcome Back</h2>
+    <p id="authSubtitle">Sign in to access NeuroPulse intelligence.</p>
+    <div class="auth-error" id="authError"></div>
+    <input type="email" id="authEmail" class="auth-input" placeholder="you@example.com" />
+    <input type="password" id="authPassword" class="auth-input" placeholder="••••••••" />
+    <button class="auth-btn" id="authSubmitBtn">Sign In</button>
+    <div class="auth-toggle" id="authToggleText">
+      Don't have an account? <span id="authToggleBtn">Sign Up</span>
+    </div>
+  </div>
+</div>
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="header" role="banner">
+  <div class="header-inner">
+    <div class="logo" aria-label="NeuroPulse home">
+      <div class="logo-mark" id="logoMark">⚡</div>
+      <span class="logo-text">NeuroPulse<span class="logo-v">v3</span></span>
+    </div>
+    <div class="header-search" role="search">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="searchInput" placeholder="Search articles..." autocomplete="off" aria-label="Search articles" />
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle light/dark theme">🌙</button>
+      <button class="btn-icon" id="refreshBtn" title="Refresh current domain" aria-label="Refresh news">↻</button>
+      <button class="btn-icon" id="logoutBtn" title="Log out" aria-label="Log out">🚪</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────────────── -->
+<main id="app" role="main">
+  <div class="hero">
+    <!-- Hero heading -->
+    <h1 class="hero-title">
+      Your <span class="grad" id="heroGrad">AI Intelligence</span><br />Feed, One Click Away
+    </h1>
+    <p class="hero-sub">Aggregates news, research, releases &amp; blogs across multiple domains — summarized by Gemini AI in real time.</p>
+
+    <!-- Domain selector -->
+    <div class="domain-grid" id="domainGrid" role="list" aria-label="Domain selector">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Fetch progress bar -->
+    <div class="fetch-bar" id="fetchBar" role="status" aria-live="polite">
+      <div class="fetch-progress-track">
+        <div class="fetch-progress-fill" id="fetchFill" style="width:0%"></div>
+      </div>
+      <div class="fetch-steps" id="fetchSteps"></div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="stats-strip" id="statsStrip" aria-label="Statistics">
+      <div class="stat-item"><span class="stat-dot"></span><span class="stat-label">Live</span></div>
+      <div class="stat-item"><span class="stat-num" id="statTotal">—</span><span class="stat-label">articles</span></div>
+      <div class="stat-item"><span class="stat-num" id="statAI">—</span><span class="stat-label">AI summaries</span></div>
+      <div class="stat-item"><span class="stat-num" id="statDomain">—</span><span class="stat-label">in domain</span></div>
+      <div class="stat-item" style="margin-left:auto"><span class="stat-label">Updated:</span><span class="stat-num" id="statUpdated" style="font-size:12px;margin-left:4px">—</span></div>
+    </div>
+
+    <!-- Category toolbar -->
+    <div class="toolbar" role="toolbar" aria-label="Filter articles">
+      <div class="cat-pills" id="catPills"></div>
+    </div>
+
+    <!-- Articles -->
+    <div id="articlesGrid" role="list" aria-label="Articles"></div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination" role="navigation" aria-label="Pagination"></div>
+  </div>
+</main>
+
+<!-- ── LinkedIn Modal ───────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <h2 class="modal-title" id="modalTitle">🔗 LinkedIn Post Generator</h2>
+      <button class="btn-icon" id="modalCloseX" aria-label="Close">✕</button>
+    </div>
+    <p class="modal-subtitle" id="modalSubtitle">Gemini AI wrote this post based on the article. Follow the 3 steps below.</p>
+
+    <!-- How-to steps -->
+    <div id="modalSteps" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="how-step" id="step1">
+        <span class="step-num">1</span>
+        <span>AI generates your post</span>
+      </div>
+      <div style="color:var(--text-muted);align-self:center;font-size:18px">→</div>
+      <div class="how-step" id="step2">
+        <span class="step-num">2</span>
+        <span>Click <b>Copy &amp; Open LinkedIn</b></span>
+      </div>
+      <div style="color:var(--text-muted);align-self:center;font-size:18px">→</div>
+      <div class="how-step" id="step3">
+        <span class="step-num">3</span>
+        <span>Paste it into a new LinkedIn post</span>
+      </div>
+    </div>
+
+    <!-- Generated post content -->
+    <div id="modalContent" aria-label="LinkedIn post content">✨ Generating post with Gemini AI...</div>
+
+    <!-- Character count -->
+    <div id="charCount" style="font-size:11px;color:var(--text-muted);text-align:right;margin-top:6px;margin-bottom:14px"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="modalClose">Close</button>
+      <button class="btn-secondary" id="modalCopy" aria-label="Copy post text">📋 Copy Text</button>
+      <button class="btn-primary" id="modalLinkedIn" disabled>
+        Copy &amp; Open LinkedIn ↗
+      </button>
+    </div>
+    <p id="modalHint" style="font-size:11.5px;color:var(--text-muted);text-align:center;margin-top:12px">
+      LinkedIn doesn't allow auto-posting — but your post is copied automatically when you click the button above.
+      Just paste it in LinkedIn's <b>"Start a post"</b> box.
+    </p>
+  </div>
+</div>
+
+<!-- ── Toast ────────────────────────────────────────────────────────────────── -->
+<div id="toast" role="alert" aria-live="assertive"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+  domains: [],
+  activeDomain: 'ai',
+  activeCategory: 'all',
+  articles: [],
+  total: 0,
+  offset: 0,
+  limit: 30,
+  search: '',
+  fetching: false,
+  theme: localStorage.getItem('theme') || 'dark',
+};
+
+const CATEGORY_COLORS = {
+  'AI Models':       { bg: 'rgba(168,85,247,0.15)',  text: '#c084fc', border: 'rgba(168,85,247,0.3)' },
+  'ML Research':     { bg: 'rgba(59,130,246,0.15)',  text: '#60a5fa', border: 'rgba(59,130,246,0.3)' },
+  'Products & Launches':{ bg:'rgba(16,185,129,0.15)',text: '#34d399', border: 'rgba(16,185,129,0.3)' },
+  'Policy & Ethics': { bg: 'rgba(245,158,11,0.15)',  text: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+  'Infra & Chips':   { bg: 'rgba(239,68,68,0.15)',   text: '#f87171', border: 'rgba(239,68,68,0.3)' },
+  'Open Source':     { bg: 'rgba(6,182,212,0.15)',   text: '#22d3ee', border: 'rgba(6,182,212,0.3)' },
+  'Security':        { bg: 'rgba(239,68,68,0.15)',   text: '#f87171', border: 'rgba(239,68,68,0.3)' },
+  'Finance':         { bg: 'rgba(16,185,129,0.15)',  text: '#34d399', border: 'rgba(16,185,129,0.3)' },
+  'Biotech':         { bg: 'rgba(6,182,212,0.15)',   text: '#22d3ee', border: 'rgba(6,182,212,0.3)' },
+  'Web3':            { bg: 'rgba(245,158,11,0.15)',  text: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+  'Other':           { bg: 'rgba(107,114,128,0.15)', text: '#9ca3af', border: 'rgba(107,114,128,0.3)' },
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+
+function setDomainColor(color) {
+  document.documentElement.style.setProperty('--domain-color', color);
+  state.domainColor = color;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return 'recently';
+  const diff = (Date.now() - new Date(dateStr)) / 1000;
+  if (diff < 60)    return 'just now';
+  if (diff < 3600)  return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function toast(msg, duration = 2500) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function faviconUrl(url) {
+  try {
+    const host = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${host}&sz=32`;
+  } catch { return ''; }
+}
+
+function catStyle(cat) {
+  return CATEGORY_COLORS[cat] || CATEGORY_COLORS['Other'];
+}
+
+// ── Theme ────────────────────────────────────────────────────────────────────
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', t);
+}
+applyTheme(state.theme);
+$('themeToggle').addEventListener('click', () => {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(state.theme);
+});
+
+// ── Fetch Progress Animation ─────────────────────────────────────────────────
+const FETCH_STEPS_DEF = [
+  { id: 'step-fetch',  label: '🌐 Fetching sources' },
+  { id: 'step-dedup',  label: '🔁 Deduplicating' },
+  { id: 'step-ai',     label: '🤖 AI summarizing' },
+  { id: 'step-save',   label: '💾 Saving articles' },
+];
+let _fetchAnim = null;
+
+function startFetchAnim() {
+  const bar = $('fetchBar');
+  const fill = $('fetchFill');
+  const stepsEl = $('fetchSteps');
+  bar.classList.add('visible');
+  stepsEl.innerHTML = FETCH_STEPS_DEF.map(s =>
+    `<div class="fetch-step" id="${s.id}"><span class="step-dot"></span>${s.label}</div>`
+  ).join('');
+
+  let step = 0;
+  let pct  = 0;
+  const durations = [18, 8, 45, 4]; // approx seconds per step
+
+  function advance() {
+    if (step < FETCH_STEPS_DEF.length) {
+      const el = $(FETCH_STEPS_DEF[step].id);
+      if (step > 0) {
+        const prev = $(FETCH_STEPS_DEF[step-1].id);
+        if (prev) prev.className = 'fetch-step done';
+      }
+      if (el) el.className = 'fetch-step active';
+      step++;
+      pct = Math.min(95, (step / FETCH_STEPS_DEF.length) * 100);
+      fill.style.width = pct + '%';
+      _fetchAnim = setTimeout(advance, durations[step-1] * 1000);
+    }
+  }
+  advance();
+}
+
+function stopFetchAnim() {
+  clearTimeout(_fetchAnim);
+  const fill = $('fetchFill');
+  fill.style.width = '100%';
+  // mark all done
+  FETCH_STEPS_DEF.forEach(s => {
+    const el = $(s.id);
+    if (el) el.className = 'fetch-step done';
+  });
+  setTimeout(() => {
+    $('fetchBar').classList.remove('visible');
+    fill.style.width = '0%';
+  }, 1500);
+}
+
+// ── Domain grid ──────────────────────────────────────────────────────────────
+async function loadDomains() {
+  try {
+    const res = await fetch('/api/domains');
+    const data = await res.json();
+    state.domains = data.domains;
+    renderDomains();
+  } catch (e) {
+    console.error('Failed to load domains:', e);
+  }
+}
+
+function renderDomains() {
+  const grid = $('domainGrid');
+  grid.innerHTML = '';
+  state.domains.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'domain-card' + (d.key === state.activeDomain ? ' active' : '');
+    card.setAttribute('role', 'listitem');
+    card.setAttribute('aria-pressed', d.key === state.activeDomain ? 'true' : 'false');
+    card.setAttribute('tabindex', '0');
+    card.style.setProperty('--card-color', d.color);
+    card.id = `domain-card-${d.key}`;
+    card.innerHTML = `
+      <span class="domain-icon">${d.icon}</span>
+      <div class="domain-name">${d.label}</div>
+      <div class="domain-desc">${d.description}</div>
+      <div class="domain-meta">
+        <span class="domain-badge">${d.source_count} sources</span>
+        ${d.article_count > 0 ? `<span class="domain-badge count">${d.article_count} articles</span>` : ''}
+      </div>
+    `;
+    card.addEventListener('click', () => selectDomain(d));
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') selectDomain(d); });
+    grid.appendChild(card);
+  });
+}
+
+async function selectDomain(domain) {
+  if (state.fetching) { toast('⏳ Pipeline already running...'); return; }
+
+  // Update UI immediately
+  state.activeDomain = domain.key;
+  setDomainColor(domain.color);
+  $('heroGrad').textContent = domain.label;
+  $('logoMark').textContent = domain.icon;
+
+  // Update card states
+  document.querySelectorAll('.domain-card').forEach(c => {
+    c.classList.remove('active');
+    c.setAttribute('aria-pressed', 'false');
+  });
+  const activeCard = $(`domain-card-${domain.key}`);
+  if (activeCard) {
+    activeCard.classList.add('active', 'fetching');
+    activeCard.setAttribute('aria-pressed', 'true');
+  }
+
+  state.fetching = true;
+  state.activeCategory = 'all';
+  state.offset = 0;
+  showSkeletons();
+  startFetchAnim();
+
+  try {
+    // Trigger the domain-specific fetch
+    const fetchRes = await fetch('/api/news/fetch-domain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: domain.key }),
+    });
+    const fetchData = await fetchRes.json();
+
+    if (fetchData.status === 'fetch_started' || fetchData.status === 'already_running') {
+      // Poll until done
+      await pollPipeline();
+    }
+  } catch(e) {
+    console.error(e);
+  }
+
+  if (activeCard) activeCard.classList.remove('fetching');
+  stopFetchAnim();
+  state.fetching = false;
+
+  // Load articles for this domain
+  await loadArticles();
+  await loadStats();
+  renderDomains(); // update article counts
+  toast(`✅ ${domain.label} loaded!`);
+}
+
+async function pollPipeline(maxWait = 120) {
+  const start = Date.now();
+  while (Date.now() - start < maxWait * 1000) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      const r = await fetch('/api/news/refresh/status');
+      const d = await r.json();
+      if (!d.running) return;
+    } catch { return; }
+  }
+}
+
+// ── Articles ─────────────────────────────────────────────────────────────────
+async function loadArticles() {
+  const params = new URLSearchParams({
+    domain:   state.activeDomain,
+    category: state.activeCategory,
+    limit:    state.limit,
+    offset:   state.offset,
+    search:   state.search,
+  });
+  try {
+    const res  = await fetch(`/api/news?${params}`);
+    const data = await res.json();
+    state.articles = data.articles;
+    state.total    = data.total;
+    renderArticles();
+    renderPagination();
+    renderCategoryPills();
+    updateDomainStatCount();
+  } catch(e) {
+    console.error('Failed to load articles:', e);
+    showEmpty('Failed to load articles. Is the server running?');
+  }
+}
+
+function updateDomainStatCount() {
+  $('statDomain').textContent = state.total.toLocaleString();
+}
+
+function showSkeletons() {
+  const grid = $('articlesGrid');
+  grid.innerHTML = Array.from({length: 6}, () => `
+    <div class="skeleton-card">
+      <div class="skel-line short"></div>
+      <div class="skel-line medium"></div>
+      <div class="skel-line"></div>
+      <div class="skel-line medium"></div>
+      <div class="skel-line short"></div>
+    </div>
+  `).join('');
+  $('pagination').innerHTML = '';
+}
+
+function showEmpty(msg = 'No articles found.') {
+  $('articlesGrid').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">Nothing here yet</div>
+      <div class="empty-sub">${msg}</div>
+    </div>
+  `;
+  $('pagination').innerHTML = '';
+}
+
+function renderArticles() {
+  const grid = $('articlesGrid');
+  if (!state.articles.length) {
+    showEmpty('Click a domain card above to fetch the latest content.');
+    return;
+  }
+  grid.innerHTML = '';
+  state.articles.forEach((art, idx) => {
+    const title   = art.ai_title  || art.title  || 'Untitled';
+    const summary = art.ai_summary || art.summary || '';
+    const hasAI   = !!(art.ai_title || art.ai_summary);
+    const cs      = catStyle(art.category);
+    const favicon = faviconUrl(art.url);
+    const timeStr = timeAgo(art.published_at || art.fetched_at);
+    const keywords = (art.keywords || []).slice(0, 4);
+    const card = document.createElement('div');
+    card.className = 'article-card';
+    card.setAttribute('role', 'listitem');
+    card.style.animationDelay = `${idx * 0.03}s`;
+    card.style.setProperty('--card-accent', state.domainColor || '#7c3aed');
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-meta">
+          ${favicon ? `<img class="source-favicon" src="${favicon}" alt="${art.source}" loading="lazy" onerror="this.style.display='none'">` : ''}
+          <span class="source-name">${art.source || 'Unknown'}</span>
+          <span class="pub-time">${timeStr}</span>
+        </div>
+        <span class="cat-chip" style="background:${cs.bg};color:${cs.text};border:1px solid ${cs.border}">${art.category}</span>
+      </div>
+      ${hasAI ? '<span class="ai-badge">✨ Gemini AI</span>' : ''}
+      <div class="card-title"><a href="${art.url}" target="_blank" rel="noopener">${escHtml(title)}</a></div>
+      ${summary ? `<div class="card-summary ${hasAI ? '' : 'fallback'}">${escHtml(summary.slice(0, 220))}${summary.length > 220 ? '…' : ''}</div>` : ''}
+      ${keywords.length ? `<div class="keyword-row">${keywords.map(k => `<span class="kw-tag">${escHtml(k)}</span>`).join('')}</div>` : ''}
+      <div class="card-footer">
+        <a class="btn-read" href="${art.url}" target="_blank" rel="noopener" id="read-${idx}">Read Article ↗</a>
+        <button class="btn-linkedin" data-url="${art.url}" id="li-${idx}" aria-label="Generate LinkedIn post">🔗 LinkedIn</button>
+        <button class="btn-copy" data-url="${art.url}" title="Copy link" id="copy-${idx}" aria-label="Copy article link">📋</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Event delegation for buttons
+  grid.addEventListener('click', handleCardActions);
+}
+
+function handleCardActions(e) {
+  const liBtn   = e.target.closest('.btn-linkedin');
+  const copyBtn = e.target.closest('.btn-copy');
+  if (liBtn)   openLinkedInModal(liBtn.dataset.url);
+  if (copyBtn) { navigator.clipboard.writeText(copyBtn.dataset.url); toast('🔗 Link copied!'); }
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Category Pills ────────────────────────────────────────────────────────────
+async function renderCategoryPills() {
+  const params = new URLSearchParams({ domain: state.activeDomain, limit: 0 });
+  const CATS = ['all', 'AI Models', 'ML Research', 'Products & Launches', 'Policy & Ethics', 'Infra & Chips', 'Open Source', 'Other'];
+  const pills = $('catPills');
+  pills.innerHTML = CATS.map(cat => `
+    <button class="cat-pill ${cat === state.activeCategory ? 'active' : ''}" data-cat="${cat}">${cat === 'all' ? '✦ All' : cat}</button>
+  `).join('');
+  pills.addEventListener('click', e => {
+    const btn = e.target.closest('.cat-pill');
+    if (!btn) return;
+    state.activeCategory = btn.dataset.cat;
+    state.offset = 0;
+    loadArticles();
+  });
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+function renderPagination() {
+  const pg = $('pagination');
+  const hasMore = state.offset + state.articles.length < state.total;
+  const hasPrev = state.offset > 0;
+  const page    = Math.floor(state.offset / state.limit) + 1;
+  const pages   = Math.max(1, Math.ceil(state.total / state.limit));
+  pg.innerHTML = `
+    <button class="page-btn" id="prevBtn" ${hasPrev ? '' : 'disabled'}>← Prev</button>
+    <span class="page-info">Page ${page} of ${pages} &nbsp;·&nbsp; ${state.total.toLocaleString()} total</span>
+    <button class="page-btn" id="nextBtn" ${hasMore ? '' : 'disabled'}>Next →</button>
+  `;
+  $('prevBtn').addEventListener('click', () => { state.offset -= state.limit; loadArticles(); window.scrollTo({top:0,behavior:'smooth'}); });
+  $('nextBtn').addEventListener('click', () => { state.offset += state.limit; loadArticles(); window.scrollTo({top:0,behavior:'smooth'}); });
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res  = await fetch('/api/stats');
+    const data = await res.json();
+    $('statTotal').textContent    = (data.total || 0).toLocaleString();
+    $('statAI').textContent       = (data.summarized || 0).toLocaleString();
+    const upd = data.last_updated ? timeAgo(data.last_updated) : '—';
+    $('statUpdated').textContent  = upd;
+  } catch(e) { console.warn('Stats error:', e); }
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+let searchTimer;
+$('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.search = e.target.value.trim();
+    state.offset = 0;
+    loadArticles();
+  }, 380);
+});
+
+// ── Refresh button ────────────────────────────────────────────────────────────
+$('refreshBtn').addEventListener('click', async () => {
+  if (state.fetching) { toast('⏳ Already fetching...'); return; }
+  const dom = state.domains.find(d => d.key === state.activeDomain);
+  if (dom) selectDomain(dom);
+  else {
+    startFetchAnim();
+    await fetch('/api/news/refresh', { method: 'POST' });
+    await pollPipeline();
+    stopFetchAnim();
+    await loadArticles();
+    await loadStats();
+  }
+});
+
+// ── LinkedIn Modal ────────────────────────────────────────────────────────────
+let _liPostContent = '';
+
+async function openLinkedInModal(url) {
+  const overlay = $('modalOverlay');
+  _liPostContent = '';
+  $('modalContent').textContent = '✨ Generating post with Gemini AI...';
+  $('charCount').textContent = '';
+  $('modalLinkedIn').disabled = true;
+  $('modalLinkedIn').style.opacity = '0.5';
+  overlay.classList.add('open');
+
+  try {
+    const res  = await fetch('/api/news/linkedin-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      _liPostContent = data.content;
+      $('modalContent').textContent = data.content;
+      const len = data.content.length;
+      $('charCount').textContent = `${len} characters · LinkedIn max is 3000`;
+      $('charCount').style.color = len > 3000 ? '#ef4444' : 'var(--text-muted)';
+      $('modalLinkedIn').disabled = false;
+      $('modalLinkedIn').style.opacity = '1';
+    } else {
+      $('modalContent').textContent = '❌ ' + (data.message || 'Error generating post.');
+    }
+  } catch(e) {
+    $('modalContent').textContent = '❌ Network error. Is the server running?';
+  }
+}
+
+function closeModal() { $('modalOverlay').classList.remove('open'); }
+
+$('modalClose').addEventListener('click', closeModal);
+$('modalCloseX').addEventListener('click', closeModal);
+$('modalOverlay').addEventListener('click', e => { if (e.target === $('modalOverlay')) closeModal(); });
+
+$('modalCopy').addEventListener('click', () => {
+  if (!_liPostContent) { toast('⏳ Post not ready yet'); return; }
+  navigator.clipboard.writeText(_liPostContent);
+  toast('📋 Post copied to clipboard!');
+});
+
+$('modalLinkedIn').addEventListener('click', () => {
+  if (!_liPostContent) return;
+  // Auto-copy first, then open LinkedIn create-post page
+  navigator.clipboard.writeText(_liPostContent).then(() => {
+    toast('📋 Post copied! Paste it in LinkedIn now.');
+  });
+  // Open LinkedIn's new post dialog directly (not just the feed)
+  window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank', 'noopener');
+});
+
+// ── Boot & Auth ───────────────────────────────────────────────────────────────
+const supabaseUrl = 'https://gkdakhkyxuednbuusyqb.supabase.co';
+const supabaseKey = 'sb_publishable_BNY75aOtGSD3lKJ6BWKjrg_u__TnB1Z';
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+let isLoginMode = true;
+const landingOverlay = document.getElementById('landingOverlay');
+
+document.body.addEventListener('click', (e) => {
+  if (e.target.id === 'authToggleBtn') {
+    isLoginMode = !isLoginMode;
+    const authTitle = document.getElementById('authTitle');
+    const authSubtitle = document.getElementById('authSubtitle');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authToggleText = document.getElementById('authToggleText');
+    
+    if (isLoginMode) {
+      authTitle.textContent = 'Welcome Back';
+      authSubtitle.textContent = 'Sign in to access NeuroPulse intelligence.';
+      authSubmitBtn.textContent = 'Sign In';
+      authToggleText.innerHTML = `Don't have an account? <span id="authToggleBtn">Sign Up</span>`;
+    } else {
+      authTitle.textContent = 'Create Account';
+      authSubtitle.textContent = 'Sign up to start using NeuroPulse.';
+      authSubmitBtn.textContent = 'Sign Up';
+      authToggleText.innerHTML = `Already have an account? <span id="authToggleBtn">Sign In</span>`;
+    }
+  }
+});
+
+document.getElementById('authSubmitBtn').addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value;
+  const password = document.getElementById('authPassword').value;
+  const authError = document.getElementById('authError');
+  const authSubmitBtn = document.getElementById('authSubmitBtn');
+  
+  authError.style.display = 'none';
+  authError.style.color = '#ef4444'; // reset to error color just in case
+  authSubmitBtn.textContent = 'Processing...';
+  
+  try {
+    let res;
+    if (isLoginMode) {
+      res = await supabaseClient.auth.signInWithPassword({ email, password });
+    } else {
+      res = await supabaseClient.auth.signUp({ email, password });
+    }
+    
+    if (res.error) throw res.error;
+
+    // Reset button
+    authSubmitBtn.textContent = isLoginMode ? 'Sign In' : 'Sign Up';
+
+    // If signup and no session, likely needs email confirmation
+    if (!isLoginMode && !res.data.session) {
+      authError.textContent = 'Success! Check your email for a confirmation link.';
+      authError.style.color = '#10b981'; // Green for success
+      authError.style.display = 'block';
+    }
+
+  } catch (err) {
+    authError.style.color = '#ef4444';
+    authError.textContent = err.message || 'Authentication failed.';
+    authError.style.display = 'block';
+    authSubmitBtn.textContent = isLoginMode ? 'Sign In' : 'Sign Up';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await supabaseClient.auth.signOut();
+  window.location.reload();
+});
+
+async function boot() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  
+  if (!session) {
+    landingOverlay.style.display = 'flex';
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        landingOverlay.style.display = 'none';
+        boot();
+      }
+    });
+    return;
+  }
+
+  landingOverlay.style.display = 'none';
+
+  // Set default AI domain color
+  setDomainColor('#7c3aed');
+
+  // Load domains
+  await loadDomains();
+
+  // Load initial articles (AI domain)
+  showSkeletons();
+  await loadArticles();
+  await loadStats();
+  renderCategoryPills();
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "NeuroPulse News",
+  "short_name": "NeuroPulse",
+  "description": "AI & Tech News Aggregator",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07080d",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

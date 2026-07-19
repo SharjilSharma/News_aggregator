@@ -1,0 +1,28 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# ── Feed fetching & parsing ────────────────────────────────────────────────────
+feedparser==6.0.11
+aiohttp==3.9.5
+trafilatura==1.12.0
+beautifulsoup4==4.12.3
+lxml==5.2.2
+
+# ── AI Summarization (Google Gemini — free tier) ───────────────────────────────
+google-generativeai>=0.7.0
+
+# ── Environment & config ───────────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── Scheduler ─────────────────────────────────────────────────────────────────
+apscheduler==3.10.4
+
+# ── NLP utilities ─────────────────────────────────────────────────────────────
+scikit-learn==1.5.0
+keybert==0.8.5
+sentence-transformers==3.0.1
+
+# ── YouTube (optional — only needed if YOUTUBE_API_KEY is set) ────────────────
+# google-api-python-client==2.131.0
+# youtube-transcript-api==0.6.2
